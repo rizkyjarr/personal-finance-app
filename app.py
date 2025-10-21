@@ -1,9 +1,11 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash
 from models import Session, Transaction
 from datetime import datetime
 import os
 
 app = Flask(__name__)
+# Secret key required for flashing messages (use env var in production)
+app.secret_key = os.environ.get('SECRET_KEY', 'dev_secret_key')
 
 # Home page - View all transactions
 @app.route('/')
@@ -27,23 +29,44 @@ def index():
 @app.route('/add', methods=['GET', 'POST'])
 def add_transaction():
     if request.method == 'POST':
-        session = Session()
-        
+        # Validate and parse date (expecting YYYY-MM-DD from <input type="date">)
+        date_str = request.form.get('date', '').strip()
+        try:
+            date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+            date_val = date_obj.isoformat()  # store as 'YYYY-MM-DD'
+        except ValueError:
+            flash('Invalid date format. Please use the date picker.', 'error')
+            return render_template('add.html')
+
+        try:
+            amount = float(request.form.get('amount', 0))
+        except ValueError:
+            flash('Invalid amount. Please enter a numeric value.', 'error')
+            return render_template('add.html')
+
         new_transaction = Transaction(
-            date=request.form['date'],
-            type=request.form['type'],
-            category=request.form['category'],
-            merchant=request.form['merchant'],
-            description=request.form['description'],
-            payment_method=request.form['payment_method'],
-            bank_name=request.form['bank_name'],
-            amount=float(request.form['amount'])
+            date=date_val,
+            type=request.form.get('type', ''),
+            category=request.form.get('category', ''),
+            merchant=request.form.get('merchant', ''),
+            description=request.form.get('description', ''),
+            payment_method=request.form.get('payment_method', ''),
+            bank_name=request.form.get('bank_name', ''),
+            amount=amount
         )
-        
-        session.add(new_transaction)
-        session.commit()
-        session.close()
-        
+
+        # Use context-managed session
+        session = Session()
+        try:
+            session.add(new_transaction)
+            session.commit()
+        except Exception:
+            session.rollback()
+            flash('Failed to save transaction. Try again.', 'error')
+            return render_template('add.html')
+        finally:
+            session.close()
+
         return redirect(url_for('index'))
     
     return render_template('add.html')
@@ -52,23 +75,49 @@ def add_transaction():
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])
 def edit_transaction(id):
     session = Session()
-    transaction = session.query(Transaction).get(id)
-    
-    if request.method == 'POST':
-        transaction.date = request.form['date']
-        transaction.type = request.form['type']
-        transaction.category = request.form['category']
-        transaction.merchant = request.form['merchant']
-        transaction.description = request.form['description']
-        transaction.payment_method = request.form['payment_method']
-        transaction.bank_name = request.form['bank_name']
-        transaction.amount = float(request.form['amount'])
-        
-        session.commit()
+    transaction = session.get(Transaction, id)
+
+    if transaction is None:
         session.close()
-        
         return redirect(url_for('index'))
-    
+
+    if request.method == 'POST':
+        # Validate date
+        date_str = request.form.get('date', '').strip()
+        try:
+            date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+            transaction.date = date_obj.isoformat()
+        except ValueError:
+            flash('Invalid date format. Please use the date picker.', 'error')
+            session.close()
+            return render_template('edit.html', transaction=transaction)
+
+        # Validate amount
+        try:
+            transaction.amount = float(request.form.get('amount', transaction.amount))
+        except ValueError:
+            flash('Invalid amount. Please enter a numeric value.', 'error')
+            session.close()
+            return render_template('edit.html', transaction=transaction)
+
+        transaction.type = request.form.get('type', transaction.type)
+        transaction.category = request.form.get('category', transaction.category)
+        transaction.merchant = request.form.get('merchant', transaction.merchant)
+        transaction.description = request.form.get('description', transaction.description)
+        transaction.payment_method = request.form.get('payment_method', transaction.payment_method)
+        transaction.bank_name = request.form.get('bank_name', transaction.bank_name)
+
+        try:
+            session.commit()
+        except Exception:
+            session.rollback()
+            flash('Failed to update transaction. Try again.', 'error')
+            session.close()
+            return render_template('edit.html', transaction=transaction)
+
+        session.close()
+        return redirect(url_for('index'))
+
     session.close()
     return render_template('edit.html', transaction=transaction)
 
@@ -76,18 +125,23 @@ def edit_transaction(id):
 @app.route('/delete/<int:id>')
 def delete_transaction(id):
     session = Session()
-    transaction = session.query(Transaction).get(id)
-    session.delete(transaction)
-    session.commit()
+    transaction = session.get(Transaction, id)
+    if transaction is not None:
+        try:
+            session.delete(transaction)
+            session.commit()
+        except Exception:
+            session.rollback()
+            flash('Failed to delete transaction. Try again.', 'error')
     session.close()
-    
+
     return redirect(url_for('index'))
 
-#Local Testing
-# if __name__ == '__main__':
-#     print("=== Starting Flask server ===")
-#     app.run(debug=True, port=5001)
-
+# Local Testing
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8181))
-    app.run(host='0.0.0.0', port=port)
+    print("=== Starting Flask server ===")
+    app.run(debug=True, port=5001)
+
+# if __name__ == '__main__':
+#     port = int(os.environ.get('PORT', 8181))
+#     app.run(host='0.0.0.0', port=port)
