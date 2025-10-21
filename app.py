@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for
 from models import Session, Transaction
 from datetime import datetime
+import os
 
 app = Flask(__name__)
 
@@ -82,6 +83,11 @@ def delete_transaction(id):
     
     return redirect(url_for('index'))
 
+#Local Testing
+# if __name__ == '__main__':
+#     print("=== Starting Flask server ===")
+#     app.run(debug=True, port=5001)
+
 if __name__ == '__main__':
-    print("=== Starting Flask server ===")
-    app.run(debug=True, port=5001)
+    port = int(os.environ.get('PORT', 8181))
+    app.run(host='0.0.0.0', port=port)
