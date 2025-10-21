@@ -34,6 +34,8 @@ class Transaction(Base):
     date = Column(String(10), nullable=False)
     type = Column(String(10), nullable=False)
     category = Column(String(50), nullable=False)
+    # Optional free-text category when user selects 'Others' in expense dropdown
+    other_category = Column(String(100))
     merchant = Column(String(100))
     description = Column(String(200))
     payment_method = Column(String(20))

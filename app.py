@@ -44,10 +44,26 @@ def add_transaction():
             flash('Invalid amount. Please enter a numeric value.', 'error')
             return render_template('add.html')
 
+        # Category selection handling
+        selected = (request.form.get('category_select') or '').strip()
+        other = (request.form.get('category') or '').strip()
+        # Determine stored category and other_category
+        if selected and selected != 'Others':
+            store_category = selected
+            store_other = None
+        elif selected == 'Others':
+            store_category = 'Others'
+            store_other = other or None
+        else:
+            # No selection from dropdown; take free-text if provided
+            store_category = other or ''
+            store_other = other or None
+
         new_transaction = Transaction(
             date=date_val,
             type=request.form.get('type', ''),
-            category=request.form.get('category', ''),
+            category=store_category,
+            other_category=store_other,
             merchant=request.form.get('merchant', ''),
             description=request.form.get('description', ''),
             payment_method=request.form.get('payment_method', ''),
@@ -101,7 +117,21 @@ def edit_transaction(id):
             return render_template('edit.html', transaction=transaction)
 
         transaction.type = request.form.get('type', transaction.type)
-        transaction.category = request.form.get('category', transaction.category)
+        # Category handling: category_select is the dropdown; category is the free-text for Others/custom
+        selected = (request.form.get('category_select') or '').strip()
+        other = (request.form.get('category') or '').strip()
+        if selected and selected != 'Others':
+            transaction.category = selected
+            transaction.other_category = None
+        elif selected == 'Others':
+            transaction.category = 'Others'
+            transaction.other_category = other or None
+        else:
+            # No dropdown selection; if free-text provided, use it
+            if other:
+                transaction.category = other
+                transaction.other_category = other
+
         transaction.merchant = request.form.get('merchant', transaction.merchant)
         transaction.description = request.form.get('description', transaction.description)
         transaction.payment_method = request.form.get('payment_method', transaction.payment_method)

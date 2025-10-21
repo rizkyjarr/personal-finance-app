@@ -125,7 +125,7 @@
                 <tr>
                     <td>{{ transaction.date }}</td>
                     <td>{{ transaction.type }}</td>
-                    <td>{{ transaction.category }}</td>
+                    <td>{{ transaction.other_category if transaction.other_category else transaction.category }}</td>
                     <td>{{ transaction.merchant }}</td>
                     <td>{{ transaction.description }}</td>
                     <td>{{ transaction.payment_method }}</td>

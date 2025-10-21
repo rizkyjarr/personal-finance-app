@@ -94,8 +94,11 @@
             </div>
 
             <div class="form-group">
-                <label for="category">Category:</label>
-                <input type="text" id="category" name="category" value="{{ transaction.category }}" required>
+                <label for="category_select">Category:</label>
+                <select id="category_select" name="category_select">
+                    <option value="">-- Select Category --</option>
+                </select>
+                <input type="text" id="category" name="category" value="{{ transaction.other_category or (transaction.category if transaction.category not in ['Food','Transport','Social','Unexpected','Housing','Grooming','Sanitary','Electricity','Pulsa','Entertainment','Others'] else '') }}" placeholder="Or type a custom category" style="margin-top:8px; display:none;">
             </div>
 
             <div class="form-group">
@@ -127,5 +130,67 @@
             <a href="/"><button type="button" class="btn btn-secondary">Cancel</button></a>
         </form>
     </div>
+</div>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const typeSelect = document.getElementById('type');
+        const categorySelect = document.getElementById('category_select');
+        const categoryInput = document.getElementById('category');
+
+        if (!categorySelect || !categoryInput) return;
+
+        const expenseOptions = ['Food','Transport','Social','Unexpected','Housing','Grooming','Sanitary','Electricity','Pulsa','Entertainment','Others'];
+        const incomeOptions = ['Salary','Reimbursement','Refunds','Others'];
+
+        function setOptions(options, currentValue) {
+            const prev = currentValue || categorySelect.value || '';
+            categorySelect.innerHTML = '';
+            const empty = document.createElement('option');
+            empty.value = '';
+            empty.textContent = '-- Select Category --';
+            categorySelect.appendChild(empty);
+            options.forEach(opt => {
+                const el = document.createElement('option');
+                el.value = opt;
+                el.textContent = opt;
+                if (prev && prev === opt) el.selected = true;
+                categorySelect.appendChild(el);
+            });
+        }
+
+        // Grab server-provided stored values (safe JSON insertion already present)
+        const stored = {{ (transaction.category or '')|tojson }};
+        const storedOther = {{ (transaction.other_category or '')|tojson }};
+
+        function update() {
+            const typeVal = (typeSelect && typeSelect.value) ? typeSelect.value : '';
+            if (typeVal.toLowerCase() === 'income') {
+                setOptions(incomeOptions, stored);
+            } else {
+                setOptions(expenseOptions, stored);
+            }
+
+            if (storedOther) {
+                const othersOpt = Array.from(categorySelect.options).find(o => o.value.toLowerCase() === 'others');
+                if (othersOpt) othersOpt.selected = true;
+                categoryInput.style.display = 'block';
+                categoryInput.required = true;
+                categoryInput.value = storedOther;
+                return;
+            }
+
+            const sel = (categorySelect.value || '').toString().trim().toLowerCase();
+            const isOthers = sel === 'others';
+            categoryInput.style.display = isOthers ? 'block' : 'none';
+            categoryInput.required = isOthers;
+        }
+
+        categorySelect.addEventListener('change', update);
+        if (typeSelect) typeSelect.addEventListener('change', update);
+
+        // Initial
+        update();
+    });
+    </script>
 </body>
 </html>
