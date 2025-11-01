@@ -37,3 +37,7 @@ htmlcov/
 dist/
 build/
 *.egg-info/
+
+#text notes
+
+.my-notes.txt

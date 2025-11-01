@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% if category %}Edit Category{% else %}New Category{% endif %}</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 2rem; }
+      label { display:block; margin:.5rem 0 .25rem; }
+      input, select { padding:.4rem; width: 280px; max-width: 100%; }
+      .row { margin-bottom: .75rem; }
+      .buttons { display:flex; gap:.5rem; margin-top:1rem; }
+      a.button { display:inline-block; padding:.4rem .7rem; background:#6c757d; color:#fff; text-decoration:none; border-radius:4px; }
+      button.primary { background:#0d6efd; color:#fff; border:0; padding:.45rem .9rem; border-radius:4px; cursor:pointer; }
+      .flash-success { color: #1a7f37; }
+      .flash-error { color: #b3261e; }
+    </style>
+  </head>
+  <body>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul>
+        {% for category_name, message in messages %}
+          <li class="flash-{{ category_name }}">{{ message }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <p><a href="{{ url_for('list_categories') }}" class="button">← Back to Categories</a></p>
+
+    <h1>{% if category %}Edit Category{% else %}New Category{% endif %}</h1>
+
+    <form method="post">
+      <div class="row">
+        <label for="type">Type</label>
+        <select id="type" name="type" required>
+          {% set current_type = (category.type if category else request.args.get('type')) or '' %}
+          <option value="" disabled {% if not current_type %}selected{% endif %}>Select Type</option>
+          <option value="Income" {% if current_type == 'Income' %}selected{% endif %}>Income</option>
+          <option value="Expense" {% if current_type == 'Expense' %}selected{% endif %}>Expense</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <label for="name">Name</label>
+        <input id="name" name="name" type="text" value="{{ category.name if category else '' }}" required />
+      </div>
+
+      {% if category %}
+      <div class="row">
+        <small>Created: {{ category.created_at }} | Updated: {{ category.updated_at }}</small>
+      </div>
+      {% endif %}
+
+      <div class="buttons">
+        <button type="submit" class="primary">Save</button>
+        <a href="{{ url_for('list_categories') }}" class="button">Cancel</a>
+      </div>
+    </form>
+  </body>
+</html>
